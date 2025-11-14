@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>darklight000999 — Secure Classroom</title>
+  <meta name="description" content="darklight000999 — Secure Online Classroom (Demo Frontend)" />
+  <style>
+    /* ====== Basic styling (clean & responsive) ====== */
+    :root{
+      --bg:#0f1724; --card:#0b1220; --accent:#7dd3fc; --muted:#9ca3af; --glass: rgba(255,255,255,0.03);
+      --danger:#ef4444;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;color:#e6eef8;background:linear-gradient(180deg,#071022 0%, #081428 100%);min-height:100vh}
+    header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:linear-gradient(90deg, rgba(255,255,255,0.02), transparent);backdrop-filter: blur(6px)}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,#06234a,#034a6b);display:flex;align-items:center;justify-content:center;font-weight:700;color:white}
+    .container{padding:20px;max-width:1100px;margin:18px auto;display:grid;grid-template-columns: 320px 1fr;gap:20px}
+    .card{background:var(--card);padding:16px;border-radius:12px;box-shadow: 0 6px 18px rgba(2,6,23,0.7)}
+    nav .menu{display:flex;flex-direction:column;gap:8px}
+    .btn{display:inline-block;padding:10px 12px;border-radius:10px;background:var(--accent);color:#022031;text-decoration:none;font-weight:600}
+    .muted{color:var(--muted);font-size:13px}
+    .small{font-size:13px}
+    input,textarea,select{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:rgba(255,255,255,0.02);color:inherit}
+    .hidden{display:none}
+    .flex{display:flex;gap:10px;align-items:center}
+    /* Live area */
+    .live-area{height:420px;border-radius:10px;overflow:hidden;position:relative;background:#000}
+    .overlay-notice{position:absolute;left:10px;bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(0,0,0,0.5);color:white;font-weight:600}
+    /* Prevent text selection on protected elements */
+    .protected{user-select:none;-webkit-user-select:none;-moz-user-select:none}
+    /* Fake watermark */
+    .watermark{position:absolute;right:8px;top:8px;color:rgba(255,255,255,0.06);font-size:12px;transform:rotate(-20deg);pointer-events:none}
+    /* Admin top */
+    .admin-badge{background:#052e2e;color:#9ff1e1;padding:6px 8px;border-radius:8px;font-weight:700}
+    footer{padding:18px;text-align:center;color:var(--muted);font-size:13px}
+    /* Responsive */
+    @media(max-width:900px){.container{grid-template-columns:1fr; padding:12px}}
+    /* Block context menu on protected viewers */
+    .no-ctx{position:relative}
+    .block-overlay{position:absolute;inset:0;background:linear-gradient(90deg, rgba(255,255,255,0.01), rgba(255,255,255,0));pointer-events:none}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo">DL</div>
+      <div>
+        <div style="font-weight:800">darklight000999</div>
+        <div class="muted">Secure Classroom — ब्राउज़र से पढ़ाई</div>
+      </div>
+    </div>
+    <div class="flex">
+      <div id="current-user" class="muted">Not logged in</div>
+      <button id="logoutBtn" class="btn hidden">Logout</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Sidebar: Login / Navigation -->
+    <aside class="card">
+      <div id="login-panel">
+        <h3>Student Login</h3>
+        <div class="muted small">हर छात्र को अलग User ID + Password</div>
+        <div style="height:10px"></div>
+        <input id="userid" placeholder="User ID" />
+        <div style="height:8px"></div>
+        <input id="password" type="password" placeholder="Password" />
+        <div style="height:8px"></div>
+        <button id="loginBtn" class="btn">Login (Demo)</button>
+        <div style="height:12px"></div>
+        <div class="muted small">* यह demo client-side लॉगिन है। असली सुरक्षा के लिए backend आवश्यक है।</div>
+      </div>
+
+      <div id="nav-panel" class="hidden">
+        <h3>Student Menu</h3>
+        <div class="menu">
+          <button data-view="live" class="btn">Live Class</button>
+          <button data-view="notes" class="btn">Daily Notes</button>
+          <button data-view="pdfs" class="btn">Daily PDFs</button>
+          <button data-view="videos" class="btn">Video Lectures</button>
+          <button data-view="chat" class="btn">Secure Chat</button>
+        </div>
+        <hr />
+        <h4>Teacher / Admin</h4>
+        <div class="muted small">Teachers can upload files & control class</div>
+        <button id="open-admin" class="btn">Open Admin Panel</button>
+      </div>
+    </aside>
+
+    <!-- Main area -->
+    <section class="card" id="main-area">
+      <div id="view-live" class="hidden">
+        <h2>Live Class</h2>
+        <div class="live-area protected no-ctx" id="liveArea">
+          <!-- Placeholder for live stream iframe or player. In production use tokenised HLS/DRM -->
+          <video id="liveVideo" style="width:100%;height:100%;background:#111" controlsList="nodownload" disablePictureInPicture webkit-playsinline playsinline></video>
+          <div class="watermark" id="wm">darklight000999.in</div>
+          <div class="overlay-notice">Screenshots & Recording blocked — Browser-level attempt</div>
+        </div>
+        <div style="height:10px"></div>
+        <div class="muted small">Teacher can start/stop class from Admin panel.</div>
+      </div>
+
+      <div id="view-notes" class="hidden">
+        <h2>Daily Notes</h2>
+        <div id="notesList"></div>
+        <!-- Client-side viewer; download/save blocked by UI but not foolproof -->
+      </div>
+
+      <div id="view-pdfs" class="hidden">
+        <h2>Daily PDFs</h2>
+        <div class="muted small">PDF open only — download button hidden by viewer where possible</div>
+        <div style="height:10px"></div>
+        <div class="no-ctx" style="height:600px;border-radius:8px;overflow:hidden;background:#fff">
+          <!-- For demo we embed a sample PDF via data-URL or external link. In production serve via tokenized viewer. -->
+          <iframe id="pdfViewer" src="" style="width:100%;height:100%;border:0" sandbox="allow-scripts allow-same-origin"></iframe>
+          <div class="block-overlay"></div>
+        </div>
+      </div>
+
+      <div id="view-videos" class="hidden">
+        <h2>Video Lectures (Streaming)</h2>
+        <div class="muted small">Streaming only. Download disabled where supported.</div>
+        <div style="height:10px"></div>
+        <video id="streamVideo" style="width:100%;height:420px;background:#000" controls controlsList="nodownload" disablePictureInPicture webkit-playsinline playsinline></video>
+      </div>
+
+      <div id="view-chat" class="hidden">
+        <h2>Secure Chat</h2>
+        <div class="muted small">Images / videos shown in ephemeral viewer. Right-click disabled.</div>
+        <div id="chatBox" style="height:320px;overflow:auto;border-radius:8px;padding:10px;background:linear-gradient(180deg,#06121b,#04101a)"></div>
+        <div style="height:10px"></div>
+        <div class="flex">
+          <input id="chatTxt" placeholder="Type message..." />
+          <button id="sendChat" class="btn">Send</button>
+        </div>
+      </div>
+
+      <!-- Admin Panel (simple client-side demo) -->
+      <div id="admin-panel" class="hidden">
+        <h2>Admin / Teacher Panel</h2>
+        <div class="flex" style="justify-content:space-between">
+          <div>
+            <div class="muted small">Student management (demo)</div>
+            <input id="addStudentId" placeholder="New Student ID" />
+            <div style="height:6px"></div>
+            <button id="addStudentBtn" class="btn">Add Student</button>
+          </div>
+          <div>
+            <div class="muted small">Live Class control</div>
+            <div style="height:6px"></div>
+            <button id="startClass" class="btn">Start Class</button>
+            <button id="stopClass" class="btn" style="background:var(--danger);color:white">Stop Class</button>
+          </div>
+        </div>
+
+        <hr />
+        <h4>Upload Files (demo)</h4>
+        <div class="muted small">Notes / PDFs / Videos uploaded here are marked secure (client demo).</div>
+        <input id="fileInput" type="file" />
+        <div style="height:8px"></div>
+        <button id="uploadBtn" class="btn">Upload (Client demo)</button>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    © <strong>darklight000999.in</strong> — Secure Classroom (Demo). Backend required for production-level security.
+  </footer>
+
+  <script>
+    /************************************************************************
+     * Client-side demo logic
+     * - यह demo frontend है। production के लिए API endpoints (login, session, uploads, streaming tokens) चाहिए।
+     ************************************************************************/
+
+    // === Simple client-side "database" (localStorage) for demo only ===
+    const STORAGE_KEYS = {
+      SESS:'dl_sess_v1',
+      NOTES:'dl_notes_v1',
+      STUDENTS:'dl_students_v1',
+      CHAT:'dl_chat_v1',
+      CLASS_ON:'dl_class_on_v1'
+    };
+
+    // Initialize demo data
+    if(!localStorage.getItem(STORAGE_KEYS.NOTES)){
+      const sampleNotes = [
+        {id:1,title:"दिन 1 - नोट्स", body:"आज का टॉपिक: गणित — बुनियादी अवधारणाएँ"},
+        {id:2,title:"दिन 2 - नोट्स", body:"आज का टॉपिक: विज्ञान — परिक्षण"}
+      ];
+      localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(sampleNotes));
+    }
+    if(!localStorage.getItem(STORAGE_KEYS.STUDENTS)){
+      localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify([]));
+    }
+    if(!localStorage.getItem(STORAGE_KEYS.CHAT)){
+      localStorage.setItem(STORAGE_KEYS.CHAT, JSON.stringify([]));
+    }
+
+    // Utilities
+    function el(id){return document.getElementById(id)}
+    function showView(name){
+      ['view-live','view-notes','view-pdfs','view-videos','view-chat','admin-panel'].forEach(v=>{
+        el(v).classList.add('hidden');
+      });
+      if(name) el(name).classList.remove('hidden');
+    }
+
+    // Basic client-side login (DEMO). Real: POST credentials to server, server enforces single-device session.
+    el('loginBtn').addEventListener('click', ()=>{
+      const uid = el('userid').value.trim();
+      const pwd = el('password').value.trim();
+      if(!uid || !pwd){ alert('User ID और Password डालें'); return; }
+
+      // Demo: accept any credentials. Create a client session token and store in localStorage.
+      const token = 'sess_' + Math.random().toString(36).slice(2);
+      const session = {uid, token, ts: Date.now()};
+      // For real single-device control: send login to server. Server will store activeToken and invalidate previous.
+      localStorage.setItem(STORAGE_KEYS.SESS, JSON.stringify(session));
+      // Broadcast to other tabs of same origin to simulate logout-on-new-login
+      try {
+        const bc = new BroadcastChannel('dl_sessions');
+        bc.postMessage({type:'login',uid,token});
+      } catch(e){ /* BroadcastChannel not supported */ }
+      applyLogin(session);
+    });
+
+    // Handle broadcast messages for single-device logout simulation across tabs in same browser
+    try {
+      const bc = new BroadcastChannel('dl_sessions');
+      bc.addEventListener('message', (ev)=>{
+        const data = ev.data || {};
+        const s = JSON.parse(localStorage.getItem(STORAGE_KEYS.SESS) || 'null');
+        if(!s) return;
+        if(data.type === 'login' && data.uid === s.uid && data.token !== s.token){
+          // Another login detected for same user in another tab — auto logout this tab
+          alert('आपका अकाउंट किसी दूसरे डिवाइस/टैब में लॉगिन हुआ। यह सेशन logout कर दिया गया है।');
+          doLogout(false);
+        }
+      });
+    } catch(e){ /* ignore */ }
+
+    function applyLogin(session){
+      el('login-panel').classList.add('hidden');
+      el('nav-panel').classList.remove('hidden');
+      el('current-user').textContent = 'Logged in: ' + session.uid;
+      el('logoutBtn').classList.remove('hidden');
+      showView('view-live');
+      // load notes list
+      renderNotes();
+      renderChat();
+      // update watermark
+      el('wm').textContent = session.uid + ' — darklight000999';
+      // If server is used, obtain stream tokens etc here
+    }
+
+    function doLogout(manual=true){
+      localStorage.removeItem(STORAGE_KEYS.SESS);
+      el('login-panel').classList.remove('hidden');
+      el('nav-panel').classList.add('hidden');
+      el('current-user').textContent = 'Not logged in';
+      el('logoutBtn').classList.add('hidden');
+      showView(null);
+      if(manual) alert('Logged out');
+    }
+
+    el('logoutBtn').addEventListener('click', ()=>doLogout(true));
+
+    // Navigation buttons
+    document.querySelectorAll('[data-view]').forEach(btn=>{
+      btn.addEventListener('click', ()=> {
+        const v = btn.getAttribute('data-view');
+        if(v==='live') showView('view-live');
+        if(v==='notes') showView('view-notes');
+        if(v==='pdfs') showView('view-pdfs');
+        if(v==='videos') showView('view-videos');
+        if(v==='chat') showView('view-chat');
+      });
+    });
+
+    // Admin open
+    el('open-admin').addEventListener('click', ()=>{
+      showView('admin-panel');
+    });
+
+    // Notes rendering
+    function renderNotes(){
+      const notes = JSON.parse(localStorage.getItem(STORAGE_KEYS.NOTES) || '[]');
+      const container = el('notesList');
+      container.innerHTML = '';
+      notes.forEach(n=>{
+        const d = document.createElement('div');
+        d.className='card protected';
+        d.style.marginBottom='10px';
+        d.innerHTML = '<strong>' + n.title + '</strong><div class="muted small" style="height:8px"></div><div>' + n.body + '</div>';
+        // prevent copying
+        d.oncontextmenu = e=>e.preventDefault();
+        container.appendChild(d);
+      });
+    }
+
+    // PDF viewer demo: loads a sample PDF (if you want, replace with server token URL)
+    // For demo we don't include a real pdf; you can set src to raw GitHub file or S3 signed URL
+    // el('pdfViewer').src = 'https://example.com/path/to/pdf?token=...'; // set in production
+
+    // Video streaming demo placeholders
+    // In production: use HLS with tokenized endpoints or DRM (Widevine/FairPlay) — not possible via simple HTML only.
+    // Set sample src (if you have a sample mp4 link replace below). For demo left empty.
+
+    // Secure Chat (client demo)
+    el('sendChat').addEventListener('click', ()=>{
+      const txt = el('chatTxt').value.trim();
+      if(!txt) return;
+      const chat = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT) || '[]');
+      chat.push({id:Date.now(),from:'you',type:'text',text:txt});
+      localStorage.setItem(STORAGE_KEYS.CHAT, JSON.stringify(chat));
+      el('chatTxt').value = '';
+      renderChat();
+    });
+    function renderChat(){
+      const chat = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT) || '[]');
+      const box = el('chatBox');
+      box.innerHTML = '';
+      chat.slice(-100).forEach(m=>{
+        const b = document.createElement('div');
+        b.style.padding='8px'; b.style.margin='8px'; b.style.borderRadius='8px';
+        b.style.background='linear-gradient(180deg,#071827,#05202a)'; b.style.color='white';
+        if(m.type==='text'){ b.innerText = (m.from||'user') + ': ' + m.text; }
+        // For images/videos: show ephemeral viewer (no download button) — still not foolproof
+        b.oncontextmenu = e=>e.preventDefault();
+        box.appendChild(b);
+      });
+      box.scrollTop = box.scrollHeight;
+    }
+
+    // Admin actions (client demo)
+    el('addStudentBtn').addEventListener('click', ()=>{
+      const id = el('addStudentId').value.trim();
+      if(!id) return alert('ID डालें');
+      const students = JSON.parse(localStorage.getItem(STORAGE_KEYS.STUDENTS) || '[]');
+      if(students.includes(id)) return alert('ID पहले से मौजूद है');
+      students.push(id);
+      localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(students));
+      alert('Student added (demo)');
+      el('addStudentId').value = '';
+    });
+
+    el('startClass').addEventListener('click', ()=>{
+      localStorage.setItem(STORAGE_KEYS.CLASS_ON, '1');
+      // In production: server will notify clients via WebSocket or push that class started and provide stream URL + token
+      alert('Class started (demo). Teacher: share stream token to students via secure API.');
+    });
+    el('stopClass').addEventListener('click', ()=>{
+      localStorage.removeItem(STORAGE_KEYS.CLASS_ON);
+      alert('Class stopped (demo).');
+    });
+
+    // File upload demo (client-only)
+    el('uploadBtn').addEventListener('click', ()=>{
+      const f = el('fileInput').files[0];
+      if(!f) return alert('File चुनें');
+      // Demo: read as data URL (not for production!)
+      const reader = new FileReader();
+      reader.onload = function(ev){
+        const data = ev.target.result;
+        // For PDFs or videos, production must upload to server with tokenized access
+        const notes = JSON.parse(localStorage.getItem(STORAGE_KEYS.NOTES) || '[]');
+        notes.push({id:Date.now(), title: 'Uploaded: '+f.name, body: 'Uploaded file (client demo).'});
+        localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(notes));
+        renderNotes();
+        alert('File uploaded to client storage (demo).');
+      };
+      reader.readAsDataURL(f);
+    });
+
+    // Prevent right-click globally on protected areas
+    document.addEventListener('contextmenu', function(e){
+      // If inside .no-ctx or .protected — block
+      let elNode = e.target;
+      while(elNode){
+        if(elNode.classList && (elNode.classList.contains('no-ctx') || elNode.classList.contains('protected'))){
+          e.preventDefault();
+          return;
+        }
+        elNode = elNode.parentElement;
+      }
+    });
+
+    // Attempt to detect screen capture? (no reliable browser API) — we add a visibility change handler to blur sensitive content on focus loss
+    document.addEventListener('visibilitychange', ()=>{
+      const live = el('liveVideo');
+      if(document.hidden){
+        // blur overlay to make recording less useful
+        if(live) live.style.filter = 'blur(6px)'; // visual deterent only
+      } else {
+        if(live) live.style.filter = '';
+      }
+    });
+
+    // On page load: if session present, apply
+    (function init(){
+      const s = JSON.parse(localStorage.getItem(STORAGE_KEYS.SESS) || 'null');
+      if(s) applyLogin(s);
+      else showView(null);
+      renderNotes();
+    })();
+
+    // ===== Developer notes printed to console =====
+    console.log('darklight000999 — frontend demo loaded. Remember: implement server-side APIs for real security (auth, single-device sessions, streaming tokens, ephemeral file serving).');
+  </script>
+</body>
+</html>
